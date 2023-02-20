@@ -2,38 +2,39 @@
 using Google.Apis.PhotosLibrary.v1;
 using Google.Apis.Services;
 using Google.Apis.Util.Store;
+using Microsoft.Extensions.Configuration;
 
 namespace GooglePhotosBackup
 {
     internal class Program
     {
-        private const string LocalPath = @"E:\My Pictures\Zenas";
-        private const string ServiceKeyFilePath = "serviceKey.json";
+        private const string ClientSecretsJson = "client_secret.json";
 
         private static async Task Main(string[] args)
         {
-            //var configuration = new ConfigurationBuilder()
-            //    .AddJsonFile("appSettings.json", optional: true, reloadOnChange: true)
-            //    .Build();
-
-            //var apiKey = configuration.GetSection("GooglePhotosBackup")["ApiKey"];
-
-            //var service = new PhotosLibraryService(new BaseClientService.Initializer()
-            //{
-            //    ApplicationName = "GooglePhotosBackup",
-            //    ApiKey = apiKey
-            //});
-
-            var service = await CreatePhotosLibraryService(ServiceKeyFilePath);
+            var localPath = GetLocalPath();
+            var service = await CreatePhotosLibraryService();
 
             var backup = new PhotoBackup(service);
-            await backup.DownloadAllMediaItems(LocalPath);
+            await backup.DownloadAllMediaItems(localPath);
         }
 
-        private static async Task<PhotosLibraryService> CreatePhotosLibraryService(string jsonKeyFilePath)
+        private static string GetLocalPath()
+        {
+            var configuration = new ConfigurationBuilder()
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                .Build();
+
+            var localPath = configuration.GetSection("GooglePhotosBackup")["LocalPath"];
+
+
+            return localPath ?? throw new Exception("Invalid configuration. Missing LocalPath");
+        }
+
+        private static async Task<PhotosLibraryService> CreatePhotosLibraryService()
         {
             UserCredential credential;
-            await using (var stream = new FileStream("client_secrets.json", FileMode.Open, FileAccess.Read))
+            await using (var stream = new FileStream(ClientSecretsJson, FileMode.Open, FileAccess.Read))
             {
                 var clientSecrets = await GoogleClientSecrets.FromStreamAsync(stream);
 

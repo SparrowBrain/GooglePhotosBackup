@@ -1,3 +1,9 @@
 # GooglePhotosBackup
 
-Copy `appSetting.example.json` to `appSettings.json` and set it to copy on build. This is where you API Key lives. Do not commit it!
+The app is partly written using ChatGPT.
+
+It's a backup tool to download all photos in the cloud and store locally. In case these photos already exist, they will be skipped.
+
+Requires Oauth Client ID to generated. The credentials should be saved as `client_secret.json` and set to `Copy if newer` in properties. `client_secret.json` should never be commited, since it contains secrets.
+
+`appsettings.example.json` should be copied to `appsettings.json` and set to `Copy if newer`. Customize `appsettings.json` as per personal needs.
