@@ -3,12 +3,14 @@ using Google.Apis.PhotosLibrary.v1;
 using Google.Apis.Services;
 using Google.Apis.Util.Store;
 using Microsoft.Extensions.Configuration;
+using NLog;
 
 namespace GooglePhotosBackup
 {
     internal class Program
     {
         private const string ClientSecretsJson = "client_secret.json";
+        private static readonly ILogger Logger = LogManager.GetCurrentClassLogger();
 
         private static async Task Main(string[] args)
         {
@@ -16,7 +18,9 @@ namespace GooglePhotosBackup
             var service = await CreatePhotosLibraryService();
 
             var backup = new PhotoBackup(service);
+            Logger.Info("Starting backup...");
             await backup.DownloadAllMediaItems(localPath);
+            Logger.Info("Backup complete.");
         }
 
         private static string GetLocalPath()
@@ -27,7 +31,7 @@ namespace GooglePhotosBackup
 
             var localPath = configuration.GetSection("GooglePhotosBackup")["LocalPath"];
 
-
+            Logger.Debug($"Local path is: \"{localPath}\".");
             return localPath ?? throw new Exception("Invalid configuration. Missing LocalPath");
         }
 
@@ -50,6 +54,7 @@ namespace GooglePhotosBackup
                 ApplicationName = "Google Photos Backup",
             });
 
+            Logger.Info("User authenticated.");
             return service;
         }
     }

@@ -1,57 +1,70 @@
 ﻿using Google.Apis.PhotosLibrary.v1;
 using Google.Apis.PhotosLibrary.v1.Data;
+using NLog;
 
-namespace GooglePhotosBackup;
-
-public class PhotoBackup
+namespace GooglePhotosBackup
 {
-    private const int PageSize = 100;
-    private readonly PhotosLibraryService _service;
-
-    public PhotoBackup(PhotosLibraryService service)
+    public class PhotoBackup
     {
-        _service = service;
-    }
+        private const int PageSize = 100;
+        private static readonly ILogger Logger = LogManager.GetCurrentClassLogger();
+        private readonly PhotosLibraryService _service;
 
-    public async Task DownloadAllMediaItems(string localFolderPath)
-    {
-        await foreach (var mediaItem in GetAllMediaItems())
+        public PhotoBackup(PhotosLibraryService service)
         {
-            var url = mediaItem.BaseUrl;
-            var fileName = mediaItem.Filename;
-            var localFilePath = Path.Combine(localFolderPath, fileName);
-
-            if (File.Exists(localFilePath))
-            {
-                continue;
-            }
-
-            var stream = await _service.HttpClient.GetStreamAsync(url);
-            await using var fileStream = new FileStream(localFilePath, FileMode.Create);
-            await stream.CopyToAsync(fileStream);
+            _service = service;
         }
-    }
 
-    private async IAsyncEnumerable<MediaItem> GetAllMediaItems()
-    {
-        string? pageToken = null;
-
-        do
+        public async Task DownloadAllMediaItems(string localFolderPath)
         {
-            var request = _service.MediaItems.Search(new SearchMediaItemsRequest()
+            await foreach (var mediaItem in GetAllMediaItems())
             {
-                PageSize = PageSize,
-                PageToken = pageToken,
-            });
+                var url = mediaItem.BaseUrl;
+                var fileName = mediaItem.Filename;
+                var localFilePath = Path.Combine(localFolderPath, fileName);
 
-            var response = await request.ExecuteAsync();
+                if (File.Exists(localFilePath))
+                {
+                    Logger.Debug($"File {fileName} already exists in the destination folder");
+                    continue;
+                }
 
-            foreach (var mediaItem in response.MediaItems)
-            {
-                yield return mediaItem;
+                try
+                {
+                    var stream = await _service.HttpClient.GetStreamAsync(url);
+                    await using var fileStream = new FileStream(localFilePath, FileMode.Create);
+                    await stream.CopyToAsync(fileStream);
+                    Logger.Info($"File {fileName} has been downloaded successfully");
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error(ex, $"Error downloading file {fileName}");
+                }
             }
+        }
 
-            pageToken = response.NextPageToken;
-        } while (pageToken != null);
+        private async IAsyncEnumerable<MediaItem> GetAllMediaItems()
+        {
+            string? pageToken = null;
+
+            do
+            {
+                var request = _service.MediaItems.Search(new SearchMediaItemsRequest()
+                {
+                    PageSize = PageSize,
+                    PageToken = pageToken,
+                });
+
+                var response = await request.ExecuteAsync();
+
+                foreach (var mediaItem in response.MediaItems)
+                {
+                    Logger.Debug($"Found media item {mediaItem.Filename} with id {mediaItem.Id}");
+                    yield return mediaItem;
+                }
+
+                pageToken = response.NextPageToken;
+            } while (pageToken != null);
+        }
     }
 }
