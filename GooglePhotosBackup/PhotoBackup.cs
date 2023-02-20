@@ -7,7 +7,7 @@ namespace GooglePhotosBackup
     public class PhotoBackup
     {
         private const int PageSize = 100;
-        private static readonly ILogger Logger = LogManager.GetCurrentClassLogger();
+        private readonly ILogger _logger = LogManager.GetCurrentClassLogger();
         private readonly PhotosLibraryService _service;
 
         public PhotoBackup(PhotosLibraryService service)
@@ -19,13 +19,18 @@ namespace GooglePhotosBackup
         {
             await foreach (var mediaItem in GetAllMediaItems())
             {
-                var url = mediaItem.BaseUrl;
+                if (mediaItem.MediaMetadata.Video != null && mediaItem.MediaMetadata.Video.Status != "READY")
+                {
+                    _logger.Info($"{mediaItem.Filename} is not ready, skipping.");
+                }
+
+                var url = $"{mediaItem.BaseUrl}=d";
                 var fileName = mediaItem.Filename;
                 var localFilePath = Path.Combine(localFolderPath, fileName);
 
                 if (File.Exists(localFilePath))
                 {
-                    Logger.Debug($"File {fileName} already exists in the destination folder");
+                    _logger.Debug($"File {fileName} already exists in the destination folder");
                     continue;
                 }
 
@@ -34,11 +39,11 @@ namespace GooglePhotosBackup
                     var stream = await _service.HttpClient.GetStreamAsync(url);
                     await using var fileStream = new FileStream(localFilePath, FileMode.Create);
                     await stream.CopyToAsync(fileStream);
-                    Logger.Info($"File {fileName} has been downloaded successfully");
+                    _logger.Info($"File {fileName} has been downloaded successfully");
                 }
                 catch (Exception ex)
                 {
-                    Logger.Error(ex, $"Error downloading file {fileName}");
+                    _logger.Error(ex, $"Error downloading file {fileName}");
                 }
             }
         }
@@ -59,7 +64,7 @@ namespace GooglePhotosBackup
 
                 foreach (var mediaItem in response.MediaItems)
                 {
-                    Logger.Debug($"Found media item {mediaItem.Filename} with id {mediaItem.Id}");
+                    _logger.Debug($"Found media item {mediaItem.Filename} with id {mediaItem.Id}");
                     yield return mediaItem;
                 }
 
