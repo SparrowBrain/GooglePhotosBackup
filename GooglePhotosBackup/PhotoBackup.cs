@@ -24,7 +24,8 @@ namespace GooglePhotosBackup
                     _logger.Info($"{mediaItem.Filename} is not ready, skipping.");
                 }
 
-                var url = $"{mediaItem.BaseUrl}=d";
+                var downloadParameter = GetDownloadParameter(mediaItem.MediaMetadata);
+                var url = $"{mediaItem.BaseUrl}={downloadParameter}";
                 var fileName = mediaItem.Filename;
                 var localFilePath = Path.Combine(localFolderPath, fileName);
 
@@ -70,6 +71,11 @@ namespace GooglePhotosBackup
 
                 pageToken = response.NextPageToken;
             } while (pageToken != null);
+        }
+
+        private static string GetDownloadParameter(MediaMetadata metadata)
+        {
+            return metadata.Video != null ? "dv" : "d";
         }
     }
 }
